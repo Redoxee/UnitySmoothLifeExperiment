@@ -47,17 +47,18 @@
 			sampler2D _PastTex;
 			float4 _Resolution;
 
-			float ra = 6.0;       // outer radius
+			float ra = 12.0;       // outer radius
 			float rr = 3.0;       // ratio of radii
 			float b = 1.0;        // smoothing border width
-			float b1 = 0.31;      // birth1
-			float b2 = 0.44;      // birth2
-			float d1 = 0.514;     // survival1
-			float d2 = 0.76;      // survival2
+			float b1 = 0.305;      // birth1
+			float b2 = 0.443;      // birth2
+			float d1 = 0.556;     // survival1
+			float d2 = 0.814;      // survival2
 			float sn = 0.028;     // sigmoid width for outer fullness
 			float sm = 0.147;     // sigmoid width for inner fullness
-			float dt = 0.15;      // dt per frame
-			
+			float dt = .089;      // dt per frame
+
+
 			float smooth_s(float x, float a, float ea)
 			{
 				return 1.0 / (1.0 + exp((a - x) * 4.0 / ea));
@@ -90,11 +91,45 @@
 			{
 				float2 invResolution = 1.0f /_Resolution.xy;
 
-				if (_Time.y < 3 && distance(i.uv, float2(.5, .5)) < .25)
+				if (distance(i.uv, float2(.5 + cos(_Time.y * 1.5) * .2,.5 + sin(_Time.y) * .2)) < .025)
 				{
-					return .75 - distance(i.uv, float2(.5, .5));
+					return 1.;
 				}
 
+				/*
+				
+				float accu = 0;
+				float4 pos;
+				float lod = 100;
+				pos = float4(i.uv + float2(-1, -1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2( 0, -1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2( 1, -1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2(-1,  1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2( 0,  1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2( 1,  1) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2(-1,  0) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+				pos = float4(i.uv + float2( 1,  0) / _Resolution.xy, 0, lod);
+				accu += tex2Dlod(_PastTex, pos).a;
+
+				float state = tex2Dlod(_PastTex, float4(i.uv, 0 , lod)).a;
+				if (state > .5 && accu == 2. || accu == 3. )
+				{
+					state = 1.;
+				}
+				else
+				{
+					state = 0.;
+				}
+				return float4(state, state, state, state);
+				/*/
+				
 				// inner radius:
 				const float rb = ra / rr;
 				// area of annulus:
@@ -102,7 +137,7 @@
 				const float AREA_OUTER = PI * (ra*ra - rb*rb);
 				const float AREA_INNER = PI * rb * rb;
 
-				float2 fragCoord = i.uv * _Resolution.xy;
+				float lodLevel = 10000.;
 
 				// how full are the annulus and inner disk?
 				float outf = 0.0, inf = 0.0;
@@ -111,9 +146,9 @@
 					for (int dy = -ra; dy <= ra; ++dy)
 					{
 						float r = sqrt(float(dx*dx + dy*dy));
-						float2 txy = ((fragCoord + float2(dx, dy)) / _Resolution.xy) % 1.;
-						float4 txyzw = float4(txy, 0., 10000.);
-						float val = tex2Dlod(_PastTex, txyzw).x;
+						float2 txy = (i.uv + float2(dx, dy) / _Resolution.xy) % 1.;
+						float4 txyzw = float4(txy, 0., lodLevel);
+						float val = tex2Dlod(_PastTex, txyzw).r;
 						float inner_kernel = ramp_step(r, rb, b);
 						float outer_kernel = ramp_step(r, ra, b) * (1.0 - inner_kernel);
 						inf += val * inner_kernel;
@@ -122,12 +157,15 @@
 				}
 				outf /= AREA_OUTER; // normalize by area
 				inf /= AREA_INNER; // normalize by area
-
-				float s = tex2D(_PastTex, i.uv).x;
+				float4 prevState = tex2Dlod(_PastTex, float4(i.uv, 0, lodLevel));
+				float s = prevState.r;
 				float deriv = 2.0 * snm(outf, inf) - 1.0;
+				
 				s = clamp(s + (deriv * dt), 0.0, 1.0);  // Apply delta to state
 				
-				return float4(s, inf, deriv, 1);
+
+				return float4(s, inf, outf, 0.);
+				// */
 			}
 			ENDCG
 		}

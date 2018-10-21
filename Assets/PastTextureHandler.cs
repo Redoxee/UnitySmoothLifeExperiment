@@ -17,8 +17,8 @@ public class PastTextureHandler : MonoBehaviour {
 
 	void OnEnable ()
     {
-        tex1 = new RenderTexture(this.TextureSize.x, this.TextureSize.y, 0, RenderTextureFormat.ARGBInt);
-        tex2 = new RenderTexture(this.TextureSize.x, this.TextureSize.y, 0, RenderTextureFormat.ARGBInt);
+        tex1 = new RenderTexture(this.TextureSize.x, this.TextureSize.y, 0, RenderTextureFormat.ARGBFloat);
+        tex2 = new RenderTexture(this.TextureSize.x, this.TextureSize.y, 0, RenderTextureFormat.ARGBFloat);
         
         this.WorkingMaterial.SetTexture("_PastTex", this.tex2);
         this.WorkingMaterial.SetVector("_Resolution", new Vector4(this.TextureSize.x, this.TextureSize.y));
